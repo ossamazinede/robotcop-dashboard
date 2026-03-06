@@ -86,28 +86,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
-              <Link key={item.href} href={item.href}>
-            <a
-              className={`flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 group ${
-                currentPath === item.href
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : sidebarOpen
-                    ? "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                    : "hover:bg-sidebar-accent"
-              }`}
-            >
-                  <Icon className="w-5 h-5 flex-shrink-0 text-neon-blue group-hover:text-neon-blue" />
-                  {sidebarOpen && (
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-sidebar-foreground truncate">
-                        {item.label}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {item.description}
-                      </p>
-                    </div>
-                  )}
-                </a>
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 group block ${
+                  currentPath === item.href
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : sidebarOpen
+                      ? "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      : "hover:bg-sidebar-accent"
+                }`}
+              >
+                <Icon className="w-5 h-5 flex-shrink-0 text-neon-blue group-hover:text-neon-blue" />
+                {sidebarOpen && (
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-sidebar-foreground truncate">
+                      {item.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {item.description}
+                    </p>
+                  </div>
+                )}
               </Link>
             );
           })}
