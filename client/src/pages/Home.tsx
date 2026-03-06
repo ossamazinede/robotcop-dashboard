@@ -1,8 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowUp, AlertTriangle, CheckCircle2, TrendingUp } from "lucide-react";
+import { ArrowUp, AlertTriangle, CheckCircle2, TrendingUp, RefreshCw } from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -22,6 +22,9 @@ import {
   mockActiveThreatsSummary,
   mockThreatTimeline,
 } from "@/lib/mockData";
+import { useMetricsPolling } from "@/hooks/usePolling";
+import IncidentDetailModal from "@/components/IncidentDetailModal";
+import { exportIncidentPDF } from "@/lib/pdfExport";
 
 /**
  * Main Overview Page - "The Brain"
@@ -30,10 +33,17 @@ import {
  * - NIST/ISO Compliance Score (circular progress)
  * - MTTR Metrics (previous vs current)
  * - Active Threats Overview (summary cards)
- * - Recent Threat Timeline
+ * - Recent Threat Timeline with real-time polling
+ * - Incident detail modal on click
  */
 
 export default function Home() {
+  const [selectedIncident, setSelectedIncident] = useState<any>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  // Real-time metrics polling
+  const liveMetrics = useMetricsPolling(45000);
+
   // Prepare threat distribution data for chart
   const threatDistribution = useMemo(() => {
     const summary = mockActiveThreatsSummary;
@@ -87,6 +97,40 @@ export default function Home() {
     }
   };
 
+  const handleThreatClick = (threat: any) => {
+    const incidentDetail = {
+      ...threat,
+      details: {
+        affectedResources: ["prod-api-user", "i-0a1b2c3d4e5f6g7h8"],
+        rootCause: "Compromised IAM credentials exposed in GitHub repository",
+        detectionMethod: "GuardDuty anomaly detection + DevOps Guru pattern matching",
+        remediationSteps: [
+          "Revoke all active IAM sessions",
+          "Apply deny-all security group rules",
+          "Isolate affected EC2 instance",
+          "Create forensic snapshot",
+          "Rotate all compromised credentials",
+        ],
+        forensicSnapshot: `snap-forensic-${threat.timestamp.getTime()}`,
+      },
+    };
+    setSelectedIncident(incidentDetail);
+    setModalOpen(true);
+  };
+
+  const handleExportIncident = (incident: any) => {
+    exportIncidentPDF({
+      id: incident.id,
+      timestamp: incident.timestamp,
+      severity: incident.severity,
+      title: incident.title,
+      description: incident.description,
+      source: incident.source,
+      status: incident.status,
+      details: incident.details,
+    });
+  };
+
   return (
     <div className="space-y-8">
       {/* Page Header */}
@@ -97,6 +141,14 @@ export default function Home() {
         <p className="text-muted-foreground">
           Centralized security posture and threat intelligence from AWS Security Hub
         </p>
+      </div>
+
+      {/* Live Metrics Indicator */}
+      <div className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-lg border border-neon-blue/30 w-fit">
+        <div className="w-2 h-2 bg-neon-green rounded-full animate-pulse" />
+        <span className="text-xs text-muted-foreground font-mono">
+          Last updated: {liveMetrics.lastUpdated.toLocaleTimeString()}
+        </span>
       </div>
 
       {/* Top Row: NIST Score & MTTR Metrics */}
@@ -136,7 +188,7 @@ export default function Home() {
                     fill="none"
                     stroke="var(--neon-blue)"
                     strokeWidth="8"
-                    strokeDasharray={`${(94 / 100) * 2 * Math.PI * 45} ${2 * Math.PI * 45}`}
+                    strokeDasharray={`${(liveMetrics.nistScore / 100) * 2 * Math.PI * 45} ${2 * Math.PI * 45}`}
                     strokeLinecap="round"
                     className="transition-all duration-500"
                     style={{ transform: "rotate(-90deg)", transformOrigin: "50% 50%" }}
@@ -145,7 +197,7 @@ export default function Home() {
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
                     <div className="text-3xl font-bold text-neon-blue font-mono">
-                      {mockNISTComplianceScore.currentScore}%
+                      {liveMetrics.nistScore}%
                     </div>
                     <div className="text-xs text-muted-foreground">Compliant</div>
                   </div>
@@ -202,7 +254,7 @@ export default function Home() {
                 </p>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-bold text-neon-green font-mono">
-                    {mockMTTRMetrics.current.value}
+                    {liveMetrics.mttrSeconds}
                   </span>
                   <span className="text-sm text-muted-foreground font-mono">
                     {mockMTTRMetrics.current.unit}
@@ -368,16 +420,23 @@ export default function Home() {
 
       {/* Recent Threat Timeline */}
       <Card className="bg-card border-border p-8">
-        <h2 className="text-lg font-bold text-foreground font-mono mb-6">
-          Recent Threat Timeline
-        </h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-bold text-foreground font-mono">
+            Recent Threat Timeline
+          </h2>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+            <RefreshCw className="w-3 h-3 animate-spin" />
+            Live Updates
+          </div>
+        </div>
         <div className="space-y-4">
           {mockThreatTimeline.map((threat, index) => (
             <div
               key={threat.id}
-              className={`flex gap-4 pb-4 ${
+              className={`flex gap-4 pb-4 cursor-pointer transition-all hover:bg-secondary rounded-lg p-3 ${
                 index !== mockThreatTimeline.length - 1 ? "border-b border-border" : ""
               }`}
+              onClick={() => handleThreatClick(threat)}
             >
               {/* Timeline Marker */}
               <div className="flex flex-col items-center">
@@ -456,6 +515,14 @@ export default function Home() {
           View All Threats →
         </Button>
       </Card>
+
+      {/* Incident Detail Modal */}
+      <IncidentDetailModal
+        open={modalOpen}
+        incident={selectedIncident}
+        onClose={() => setModalOpen(false)}
+        onExport={handleExportIncident}
+      />
     </div>
   );
 }

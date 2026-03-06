@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   mockS3BucketMetrics,
   mockComplianceFrameworks,
 } from "@/lib/mockData";
+import { exportComplianceReportPDF } from "@/lib/pdfExport";
 
 /**
  * Architecture & Evidence Vault Page
@@ -27,6 +28,8 @@ import {
  */
 
 export default function Evidence() {
+  const [exporting, setExporting] = useState(false);
+
   const wormStatus = useMemo(() => {
     return mockWORMStorageStatus;
   }, []);
@@ -38,6 +41,19 @@ export default function Evidence() {
   const complianceFrameworks = useMemo(() => {
     return mockComplianceFrameworks;
   }, []);
+
+  const handleExportCompliance = async () => {
+    setExporting(true);
+    try {
+      exportComplianceReportPDF({
+        frameworks: complianceFrameworks,
+        overallScore: 96,
+        generatedAt: new Date(),
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -279,9 +295,20 @@ export default function Evidence() {
 
       {/* Compliance Frameworks */}
       <Card className="bg-card border-border p-8">
-        <h2 className="text-lg font-bold text-foreground font-mono mb-6">
-          Compliance Frameworks
-        </h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-bold text-foreground font-mono">
+            Compliance Frameworks
+          </h2>
+          <Button
+            onClick={handleExportCompliance}
+            disabled={exporting}
+            size="sm"
+            className="bg-neon-blue hover:bg-neon-blue/80 text-primary-foreground font-mono"
+          >
+            <Download className="w-4 h-4 mr-1" />
+            {exporting ? "Exporting..." : "Export Report"}
+          </Button>
+        </div>
         <div className="space-y-4">
           {complianceFrameworks.map((framework, index) => (
             <div

@@ -1,12 +1,13 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Brain, AlertTriangle, CheckCircle2, Lightbulb, TrendingUp } from "lucide-react";
+import { Brain, AlertTriangle, CheckCircle2, Lightbulb, TrendingUp, Download } from "lucide-react";
 import {
   mockForensicsReport,
   mockRootCauseAnalysis,
 } from "@/lib/mockData";
+import { exportForensicsReportPDF } from "@/lib/pdfExport";
 
 /**
  * Cognitive AI Insights Page - "The Wisdom"
@@ -18,6 +19,8 @@ import {
  */
 
 export default function Insights() {
+  const [exporting, setExporting] = useState(false);
+
   const forensicsReport = useMemo(() => {
     return mockForensicsReport;
   }, []);
@@ -38,6 +41,21 @@ export default function Insights() {
         return "text-neon-red";
       default:
         return "text-cyan-accent";
+    }
+  };
+
+  const handleExportForensics = async () => {
+    setExporting(true);
+    try {
+      exportForensicsReportPDF({
+        incidentId: forensicsReport.incidentId,
+        timestamp: forensicsReport.timestamp,
+        narrative: forensicsReport.narrative,
+        riskAssessment: forensicsReport.riskAssessment,
+        recommendations: forensicsReport.recommendations,
+      });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -65,10 +83,21 @@ export default function Insights() {
                 Incident ID: {forensicsReport.incidentId}
               </p>
             </div>
-            <Badge className="bg-neon-blue/20 text-neon-blue border-neon-blue/50">
-              <Brain className="w-3 h-3 mr-1" />
-              AI-Generated
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-neon-blue/20 text-neon-blue border-neon-blue/50">
+                <Brain className="w-3 h-3 mr-1" />
+                AI-Generated
+              </Badge>
+              <Button
+                onClick={handleExportForensics}
+                disabled={exporting}
+                size="sm"
+                className="bg-neon-blue hover:bg-neon-blue/80 text-primary-foreground font-mono"
+              >
+                <Download className="w-4 h-4 mr-1" />
+                {exporting ? "Exporting..." : "Export PDF"}
+              </Button>
+            </div>
           </div>
 
           {/* Narrative Report */}
